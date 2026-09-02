@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatApp</title>
+
+    <!-- SockJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <!-- STOMP -->
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:             #0d1117;
+            --card-bg:        #161b22;
+            --nav-bg:         #1c2128;
+            --input-bg:       #21262d;
+            --bubble-me:      #5865f2;
+            --bubble-me-dark: #4752c4;
+            --bubble-other:   #2d333b;
+            --border:         rgba(255,255,255,0.08);
+            --text:           #e6edf3;
+            --text-muted:     #8b949e;
+            --placeholder:    #484f58;
+            --green:          #3fb950;
+            --red:            #f85149;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+        }
+
+        /* ── CARD ── */
+        .chat-card {
+            width: 100%;
+            max-width: 700px;
+            height: 90vh;
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── NAVBAR ── */
+        .navbar {
+            background: var(--nav-bg);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .app-name {
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: var(--text);
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--green);
+            transition: color 0.3s;
+        }
+
+        .live-badge.offline { color: var(--red); }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            transition: background 0.3s;
+            animation: pulse 2.2s ease-in-out infinite;
+        }
+
+        .live-badge.offline .live-dot {
+            background: var(--red);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1;   transform: scale(1);   }
+            50%       { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* ── SENDER BAR ── */
+        .sender-bar {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            background: var(--card-bg);
+        }
+
+        .sender-bar input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        .sender-bar input::placeholder { color: var(--placeholder); }
+
+        .sender-bar input:focus {
+            border-color: rgba(88, 101, 242, 0.5);
+            color: var(--text);
+        }
+
+        /* ── CHAT BODY ── */
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            scroll-behavior: smooth;
+        }
+
+        #chat::-webkit-scrollbar       { width: 4px; }
+        #chat::-webkit-scrollbar-track { background: transparent; }
+        #chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            gap: 10px;
+            user-select: none;
+        }
+
+        .empty-state .empty-icon { font-size: 36px; opacity: 0.5; }
+
+        /* ── MESSAGE WRAPPER ── */
+        .msg-wrapper {
+            display: flex;
+            flex-direction: column;
+            max-width: 68%;
+            animation: slideUp 0.22s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+
+        .msg-me    { align-self: flex-end;   align-items: flex-end;   }
+        .msg-other { align-self: flex-start; align-items: flex-start; }
+
+        /* ── BUBBLE ── */
+        .bubble {
+            padding: 9px 13px 7px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .msg-me .bubble {
+            background: var(--bubble-me);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg-other .bubble {
+            background: var(--bubble-other);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+        }
+
+        .bubble-sender {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #a5b4fc;
+            margin-bottom: 3px;
+            letter-spacing: 0.1px;
+        }
+
+        .bubble-content { display: block; }
+
+        .bubble-time {
+            display: block;
+            font-size: 10px;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .msg-me    .bubble-time { color: rgba(255,255,255,0.5); }
+        .msg-other .bubble-time { color: var(--text-muted);     }
+
+        /* ── INPUT BAR ── */
+        .input-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--nav-bg);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        #messageInput {
+            flex: 1;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 10px 18px;
+            font-size: 14px;
+            color: var(--text);
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #messageInput::placeholder { color: var(--placeholder); }
+        #messageInput:focus        { border-color: rgba(88, 101, 242, 0.5); }
+
+        #sendMessage {
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            border: none;
+            background: var(--bubble-me);
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.12s;
+        }
+
+        #sendMessage:hover:not(:disabled)  { background: var(--bubble-me-dark); transform: scale(1.07); }
+        #sendMessage:active:not(:disabled) { transform: scale(0.93); }
+
+        #sendMessage:disabled {
+            background: var(--bubble-other);
+            color: var(--placeholder);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-card">
+
+    <!-- NAVBAR -->
+    <div class="navbar">
+        <span class="app-name">💬 ChatApp</span>
+        <span class="live-badge offline" id="liveBadge">
+            <span class="live-dot"></span>
+            <span id="liveText">Connecting…</span>
+        </span>
+    </div>
+
+    <!-- SENDER BAR -->
+    <div class="sender-bar">
+        <input id="senderInput" type="text" placeholder="Your name…" maxlength="30" />
+    </div>
+
+    <!-- MESSAGES -->
+    <div id="chat">
+        <div class="empty-state" id="emptyState">
+            <span class="empty-icon">💬</span>
+            <span>No messages yet — say hello!</span>
+        </div>
+    </div>
+
+    <!-- INPUT BAR -->
+    <div class="input-bar">
+        <input id="messageInput" type="text" placeholder="Type a message…" autocomplete="off" />
+        <button id="sendMessage" disabled title="Send">&#10148;</button>
+    </div>
+
+</div>
+
+<script>
+    var stompClient = null;
+
+    /* ── Helpers ────────────────────────────────── */
+    function getTime() {
+        var d = new Date();
+        return d.getHours().toString().padStart(2, '0') + ':' +
+            d.getMinutes().toString().padStart(2, '0');
+    }
+
+    function setConnected(connected) {
+        document.getElementById("sendMessage").disabled = !connected;
+
+        var badge = document.getElementById("liveBadge");
+        var text  = document.getElementById("liveText");
+
+        if (connected) {
+            badge.classList.remove("offline");
+            text.textContent = "Live";
+        } else {
+            badge.classList.add("offline");
+            text.textContent = "Connecting…";
+        }
+    }
+
+    /* ── Connect ────────────────────────────────── */
+    function connect() {
+        var socket = new SockJS("/chat");
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function (frame) {
+            console.log("Connected: " + frame);
+            setConnected(true);
+
+            stompClient.subscribe("/topic/messages", function (message) {
+                showMessage(JSON.parse(message.body));
+            });
+        });
+    }
+
+    /* ── Show Message ───────────────────────────── */
+    function showMessage(message) {
+        var chat   = document.getElementById("chat");
+        var myName = document.getElementById("senderInput").value.trim();
+        var isMe   = (message.sender === myName && myName !== "");
+
+        // remove empty state on first message
+        var emptyEl = document.getElementById("emptyState");
+        if (emptyEl) emptyEl.remove();
+
+        // wrapper
+        var wrapper = document.createElement("div");
+        wrapper.className = "msg-wrapper " + (isMe ? "msg-me" : "msg-other");
+
+        // bubble
+        var bubble = document.createElement("div");
+        bubble.className = "bubble";
+
+        // sender name — only for others
+        if (!isMe) {
+            var senderEl = document.createElement("span");
+            senderEl.className = "bubble-sender";
+            senderEl.textContent = message.sender;
+            bubble.appendChild(senderEl);
+        }
+
+        // message text
+        var contentEl = document.createElement("span");
+        contentEl.className = "bubble-content";
+        contentEl.textContent = message.content;
+        bubble.appendChild(contentEl);
+
+        // timestamp
+        var timeEl = document.createElement("span");
+        timeEl.className = "bubble-time";
+        timeEl.textContent = getTime();
+        bubble.appendChild(timeEl);
+
+        wrapper.appendChild(bubble);
+        chat.appendChild(wrapper);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    /* ── Send Message ───────────────────────────── */
+    function sendMessage() {
+        var sender  = document.getElementById("senderInput").value.trim();
+        var content = document.getElementById("messageInput").value.trim();
+
+        if (sender === "" || content === "") return;
+
+        var chatMessage = { sender: sender, content: content };
+
+        stompClient.send(
+            "/app/sendMessage",
+            {},
+            JSON.stringify(chatMessage)
+        );
+
+        document.getElementById("messageInput").value = "";
+    }
+
+    /* ── Events ─────────────────────────────────── */
+    document.getElementById("sendMessage").onclick = sendMessage;
+
+    document.getElementById("messageInput").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") sendMessage();
+    });
+
+    /* ── Init ───────────────────────────────────── */
+    window.onload = connect;
+</script>
+
+</body>
+</html>
