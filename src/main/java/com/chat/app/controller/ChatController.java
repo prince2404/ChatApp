@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class ChatController {
 
+    @GetMapping("/")
+    public String root() {
+        return "redirect:/chat";  // root URL → redirects to /chat
+    }
+
     @MessageMapping("/sendMessage")
     @SendTo("/topic/messages")
     public ChatMessage sendMessage(ChatMessage message){
