@@ -331,41 +331,94 @@
         }
     }
 
-    /* ── Connect ────────────────────────────────── */
     function connect() {
         var socket = new SockJS("/chat");
         stompClient = Stomp.over(socket);
         stompClient.debug = null;
 
-        stompClient.connect({}, function (frame) {
+        stompClient.connect({}, function(frame) {
             console.log("Connected: " + frame);
             setConnected(true);
 
-            stompClient.subscribe("/topic/messages", function (message) {
-                showMessage(JSON.parse(message.body));
+            // Subscribe to live messages (existing)
+            stompClient.subscribe("/topic/messages", function(message) {
+                showMessage(JSON.parse(message.body), false);
+                // ↑ false = live message (not history)
             });
+
+            // NEW: Load message history via REST after connecting
+            loadMessageHistory();
         });
     }
 
-    /* ── Show Message ───────────────────────────── */
-    function showMessage(message) {
-        var chat   = document.getElementById("chat");
-        var myName = document.getElementById("senderInput").value.trim();
-        var isMe   = (message.sender === myName && myName !== "");
+    function loadMessageHistory() {
+        fetch('/api/messages')
+            // ↑ Standard browser Fetch API — sends HTTP GET to /api/messages
+            //   Spring's @GetMapping("/api/messages") handles it.
 
-        // remove empty state on first message
+            .then(function(response) {
+                return response.json();
+                // ↑ Parse response body as JSON array
+            })
+
+            .then(function(messages) {
+                if (messages.length === 0) return;
+
+                // Add a visual divider before history
+                var chat = document.getElementById("chat");
+                var emptyEl = document.getElementById("emptyState");
+                if (emptyEl) emptyEl.remove();
+
+                var divider = document.createElement("div");
+                divider.style.cssText =
+                    "text-align:center; font-size:11px; color:#555f6a;" +
+                    "margin:8px 0; letter-spacing:0.5px;";
+                divider.textContent = "── Chat History ──";
+                chat.appendChild(divider);
+
+                // Display each historical message
+                messages.forEach(function(msg) {
+                    showMessage(msg, true);
+                    // ↑ true = history message (slightly different style)
+                });
+
+                // Divider after history, before live messages
+                var liveDivider = document.createElement("div");
+                liveDivider.style.cssText =
+                    "text-align:center; font-size:11px; color:#555f6a;" +
+                    "margin:8px 0; letter-spacing:0.5px;";
+                liveDivider.textContent = "── Live ──";
+                chat.appendChild(liveDivider);
+
+                chat.scrollTop = chat.scrollHeight;
+            })
+
+            .catch(function(err) {
+                console.log("Could not load history:", err);
+                // ↑ Fail silently — app still works without history
+            });
+    }
+
+    /* ── Show Message ───────────────────────────── */
+    function showMessage(message, isHistory) {
+        var chat    = document.getElementById("chat");
+        var myName  = document.getElementById("senderInput").value.trim();
+        var isMe    = (message.sender === myName && myName !== "");
+
         var emptyEl = document.getElementById("emptyState");
         if (emptyEl) emptyEl.remove();
 
-        // wrapper
         var wrapper = document.createElement("div");
         wrapper.className = "msg-wrapper " + (isMe ? "msg-me" : "msg-other");
 
-        // bubble
+        // History messages are slightly faded to distinguish from live
+        if (isHistory) {
+            wrapper.style.opacity = "0.75";
+        }
+
         var bubble = document.createElement("div");
         bubble.className = "bubble";
 
-        // sender name — only for others
         if (!isMe) {
             var senderEl = document.createElement("span");
             senderEl.className = "bubble-sender";
@@ -373,21 +426,30 @@
             bubble.appendChild(senderEl);
         }
 
-        // message text
         var contentEl = document.createElement("span");
         contentEl.className = "bubble-content";
         contentEl.textContent = message.content;
         bubble.appendChild(contentEl);
 
-        // timestamp
         var timeEl = document.createElement("span");
         timeEl.className = "bubble-time";
-        timeEl.textContent = getTime();
+        // For history: show saved timestamp. For live: show current time.
+        timeEl.textContent = isHistory && message.timestamp
+            ? formatTimestamp(message.timestamp)
+            : getTime();
         bubble.appendChild(timeEl);
 
         wrapper.appendChild(bubble);
         chat.appendChild(wrapper);
         chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Formats MongoDB LocalDateTime string → "HH:MM"
+    // MongoDB sends: "2026-09-02T03:43:07" → we show: "03:43"
+    function formatTimestamp(timestamp) {
+        var date = new Date(timestamp);
+        return date.getHours().toString().padStart(2, '0') + ':' +
+            date.getMinutes().toString().padStart(2, '0');
     }
 
     /* ── Send Message ───────────────────────────── */

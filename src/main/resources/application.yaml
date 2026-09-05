@@ -1,6 +1,9 @@
 spring:
   application:
     name: chat
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb+srv://developerprincekumar_db_user:DzLFPU7QVmGzsgIZ@chatapp.drw0spx.mongodb.net/?appName=chatapp}
 
 server:
   port: ${PORT:8080}
