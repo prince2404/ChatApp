@@ -22,10 +22,13 @@ public class ChatController {
     @MessageMapping("/sendMessage")
     @SendTo("/topic/messages")
     public ChatMessage sendMessage(ChatMessage message) {
-        return chatMessageService.save(message);
-        // ↑ Save to MongoDB first, THEN @SendTo broadcasts
-        //   the returned object (now with ID + timestamp) to all subscribers.
-        //   Both actions happen with one return statement.
+        try {
+            return chatMessageService.save(message);  // try to save
+        } catch (Exception e) {
+            // If MongoDB fails, still broadcast — don't block the chat
+            message.setTimestamp(java.time.LocalDateTime.now());
+            return message;
+        }
     }
 
     // ── REST: load message history ────────────────────────────
