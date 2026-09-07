@@ -44,7 +44,7 @@ class ChatControllerTest {
     void testCheckRoomExists() {
         when(chatRoomService.roomExists("XK92PL")).thenReturn(true);
 
-        ResponseEntity<Map<String, Boolean>> response = chatController.checkRoom("XK92PL");
+        ResponseEntity<Map<String, Boolean>> response = chatController.checkRoomExists("XK92PL");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -55,7 +55,7 @@ class ChatControllerTest {
     void testCheckRoomDoesNotExist() {
         when(chatRoomService.roomExists("NOPE99")).thenReturn(false);
 
-        ResponseEntity<Map<String, Boolean>> response = chatController.checkRoom("NOPE99");
+        ResponseEntity<Map<String, Boolean>> response = chatController.checkRoomExists("NOPE99");
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertNotNull(response.getBody());

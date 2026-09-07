@@ -1,63 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title>ChatApp</title>
 
+    <!-- SockJS and STOMP for WebSocket messaging -->
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
     <style>
-        *,
-        *::before,
-        *::after {
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
         :root {
-            --bg: #0d1117;
-            --card-bg: #161b22;
-            --nav-bg: #1c2128;
-            --input-bg: #21262d;
-            --bubble-me: #5865f2;
-            --bubble-me-dark: #4752c4;
-            --bubble-other: #2d333b;
-            --border: rgba(255, 255, 255, 0.08);
-            --text: #e6edf3;
+            --bg-color: #0d1117;
+            --card-bg: rgba(22, 27, 34, 0.78);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --input-bg: rgba(13, 17, 23, 0.85);
+            --indigo: #5865f2;
+            --indigo-hover: #4752c4;
+            --text-primary: #e6edf3;
             --text-muted: #8b949e;
-            --placeholder: #484f58;
-            --green: #3fb950;
-            --red: #f85149;
-            --accent: #388bfd;
+            --error-red: #f85149;
+            --bubble-me: #5865f2;
+            --bubble-other: #21262d;
+            --chip-accent: #a5b4fc;
         }
 
         body {
-            background: var(--bg);
+            background: var(--bg-color);
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text);
+            color: var(--text-primary);
             overflow: hidden;
+            padding: 16px;
         }
 
+        /* ── GLASSMORPHISM CHAT CARD ── */
         .chat-card {
             width: 100%;
             max-width: 600px;
             height: 85vh;
             background: var(--card-bg);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            border: 1px solid var(--border-subtle);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             position: relative;
+        }
+
+        /* ── COMMON INPUT STYLES ── */
+        .app-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            color: var(--text-primary);
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+        }
+
+        .app-input:focus {
+            border-color: var(--indigo);
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.35);
+        }
+
+        .app-input.input-error {
+            border-color: var(--error-red) !important;
+            box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.3) !important;
+            animation: shake 0.25s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
         }
 
         /* ── LOBBY SCREEN ── */
@@ -67,83 +98,122 @@
             align-items: center;
             justify-content: center;
             padding: 24px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
 
-        .lobby-box {
+        .lobby-card {
             width: 100%;
-            max-width: 320px;
+            max-width: 340px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
         }
 
-        .lobby-input {
-            width: 100%;
-            background: var(--input-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px 14px;
-            font-size: 15px;
-            color: var(--text);
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .lobby-input:focus {
-            border-color: var(--bubble-me);
-        }
-
-        #roomIdInput {
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .join-wrapper {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .error-msg {
-            color: var(--red);
-            font-size: 12px;
-            margin-top: 6px;
-            display: none;
-        }
-
-        .btn-group {
+        .btn-row {
             display: flex;
             gap: 10px;
-            margin-top: 2px;
         }
 
         .btn {
             flex: 1;
-            padding: 11px;
-            border-radius: 8px;
+            padding: 11px 16px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            border: none;
-            transition: background 0.2s, opacity 0.2s;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+            white-space: nowrap;
         }
 
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Filled indigo for Create Room */
         .btn-create {
-            background: var(--bubble-me);
-            color: #fff;
+            background: var(--indigo);
+            color: #ffffff;
+            border: none;
         }
 
         .btn-create:hover {
-            background: var(--bubble-me-dark);
+            background: var(--indigo-hover);
         }
 
-        .btn-join {
-            background: var(--nav-bg);
-            border: 1px solid var(--border);
-            color: var(--text);
+        /* Outlined for Join Room */
+        .btn-join-outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            color: var(--text-primary);
         }
 
-        .btn-join:hover {
+        .btn-join-outline:hover {
             background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Slide/fade container for Room ID input */
+        .join-slider {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transform: translateY(-8px);
+            transition: max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                        opacity 0.28s ease,
+                        transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                        margin-top 0.32s ease;
+            margin-top: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .join-slider.open {
+            max-height: 110px;
+            opacity: 1;
+            transform: translateY(0);
+            margin-top: 6px;
+        }
+
+        .join-input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .room-code-input {
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .btn-confirm-join {
+            background: var(--indigo);
+            color: #fff;
+            border: none;
+            padding: 0 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-confirm-join:hover {
+            background: var(--indigo-hover);
+        }
+
+        .error-text {
+            color: var(--error-red);
+            font-size: 12px;
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* ── CHAT SCREEN ── */
@@ -152,25 +222,43 @@
             display: none;
             flex-direction: column;
             overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
+        #chatScreen.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Top Navbar */
         .chat-navbar {
-            background: var(--nav-bg);
             padding: 14px 18px;
+            background: rgba(28, 33, 40, 0.7);
+            border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border);
             flex-shrink: 0;
         }
 
-        .room-tag {
-            display: flex;
+        /* Room ID Chip */
+        .room-chip {
+            display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 14px;
+            background: rgba(88, 101, 242, 0.12);
+            border: 1px solid rgba(88, 101, 242, 0.35);
+            box-shadow: 0 0 12px rgba(88, 101, 242, 0.2);
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+
+        .room-chip-text {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
             font-weight: 700;
-            color: #a5b4fc;
+            color: var(--chip-accent);
             letter-spacing: 1px;
         }
 
@@ -179,52 +267,50 @@
             border: none;
             color: var(--text-muted);
             cursor: pointer;
-            padding: 4px;
+            padding: 2px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 4px;
-            transition: color 0.2s;
+            transition: color 0.2s ease, transform 0.15s ease;
         }
 
         .copy-btn:hover {
-            color: var(--text);
-        }
-
-        .copy-btn svg {
-            width: 14px;
-            height: 14px;
+            color: #ffffff;
+            transform: scale(1.15);
         }
 
         .leave-btn {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-muted);
             padding: 6px 12px;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s, color 0.2s;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         }
 
         .leave-btn:hover {
-            background: rgba(248, 81, 73, 0.15);
+            background: rgba(248, 81, 73, 0.12);
             border-color: rgba(248, 81, 73, 0.4);
-            color: var(--red);
+            color: var(--error-red);
         }
 
+        /* Messages stream */
         #chatMessages {
             flex: 1;
             overflow-y: auto;
-            padding: 18px;
+            padding: 16px 20px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
 
+        /* Custom thin scrollbar */
         #chatMessages::-webkit-scrollbar {
-            width: 4px;
+            width: 5px;
         }
 
         #chatMessages::-webkit-scrollbar-track {
@@ -232,14 +318,25 @@
         }
 
         #chatMessages::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.14);
             border-radius: 4px;
         }
 
+        #chatMessages::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Message bubbles */
         .msg-row {
             display: flex;
             flex-direction: column;
-            max-width: 70%;
+            max-width: 72%;
+            animation: msgSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes msgSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0);    }
         }
 
         .msg-me {
@@ -253,22 +350,22 @@
         }
 
         .bubble {
-            padding: 8px 14px;
-            border-radius: 14px;
+            padding: 9px 14px 8px;
+            border-radius: 16px;
             font-size: 14px;
-            line-height: 1.4;
+            line-height: 1.45;
             word-break: break-word;
         }
 
         .msg-me .bubble {
             background: var(--bubble-me);
-            color: #fff;
+            color: #ffffff;
             border-bottom-right-radius: 3px;
         }
 
         .msg-other .bubble {
             background: var(--bubble-other);
-            color: var(--text);
+            color: var(--text-primary);
             border-bottom-left-radius: 3px;
         }
 
@@ -276,8 +373,12 @@
             display: block;
             font-size: 11px;
             font-weight: 600;
-            color: #a5b4fc;
-            margin-bottom: 2px;
+            color: var(--chip-accent);
+            margin-bottom: 3px;
+        }
+
+        .bubble-text {
+            display: block;
         }
 
         .bubble-time {
@@ -285,311 +386,381 @@
             font-size: 10px;
             margin-top: 4px;
             text-align: right;
-            opacity: 0.6;
+            opacity: 0.65;
         }
 
+        /* Message input bottom bar */
         .chat-input-bar {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 16px;
-            background: var(--nav-bg);
-            border-top: 1px solid var(--border);
+            gap: 10px;
+            padding: 12px 18px;
+            background: rgba(28, 33, 40, 0.7);
+            border-top: 1px solid var(--border-subtle);
             flex-shrink: 0;
         }
 
         .chat-input {
             flex: 1;
             background: var(--input-bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 14px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 11px 16px;
             font-size: 14px;
-            color: var(--text);
+            color: var(--text-primary);
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .chat-input:focus {
-            border-color: var(--bubble-me);
+            border-color: var(--indigo);
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.35);
         }
 
+        /* Circular Indigo Send Button with Paper Plane icon */
         .btn-send {
-            background: var(--bubble-me);
-            color: #fff;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: var(--indigo);
+            color: #ffffff;
             border: none;
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s ease, transform 0.15s ease;
         }
 
         .btn-send:hover {
-            background: var(--bubble-me-dark);
+            background: var(--indigo-hover);
+            transform: scale(1.06);
+        }
+
+        .btn-send:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
-
 <body>
 
-    <div class="chat-card">
+<div class="chat-card">
 
-        <!-- Lobby Screen -->
-        <div id="lobbyScreen">
-            <div class="lobby-box">
-                <input type="text" id="nameInput" placeholder="Enter your name" class="lobby-input"
-                    autocomplete="name" />
-                <div class="join-wrapper">
-                    <input type="text" id="roomIdInput" placeholder="Enter room ID" class="lobby-input" maxlength="6"
-                        autocomplete="off" />
-                    <span id="joinError" class="error-msg">Room not found</span>
+    <!-- ── LOBBY SCREEN ── -->
+    <div id="lobbyScreen">
+        <div class="lobby-card">
+            <input type="text" id="nameInput" class="app-input" autocomplete="name" />
+
+            <div class="btn-row">
+                <button type="button" id="btnCreate" class="btn btn-create" onclick="handleCreateRoom()">Create Room</button>
+                <button type="button" id="btnToggleJoin" class="btn btn-join-outline" onclick="toggleJoinSlider()">Join Room</button>
+            </div>
+
+            <!-- Slides down when "Join Room" is clicked -->
+            <div id="joinSlider" class="join-slider">
+                <div class="join-input-row">
+                    <input type="text" id="roomIdInput" class="app-input room-code-input" maxlength="6" autocomplete="off" />
+                    <button type="button" id="btnConfirmJoin" class="btn-confirm-join" onclick="handleConfirmJoin()">Join</button>
                 </div>
-                <div class="btn-group">
-                    <button type="button" id="btnCreate" class="btn btn-create" onclick="handleCreate()">Create</button>
-                    <button type="button" id="btnJoin" class="btn btn-join" onclick="handleJoin()">Join</button>
-                </div>
+                <div id="joinError" class="error-text">Room not found</div>
             </div>
         </div>
-
-        <!-- Chat Screen -->
-        <div id="chatScreen">
-            <div class="chat-navbar">
-                <div class="room-tag">
-                    <span id="roomDisplay"></span>
-                    <button type="button" class="copy-btn" onclick="copyRoomId()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                    </button>
-                </div>
-                <button type="button" class="leave-btn" onclick="leaveChat()">Leave</button>
-            </div>
-
-            <div id="chatMessages"></div>
-
-            <div class="chat-input-bar">
-                <input type="text" id="messageInput" class="chat-input" autocomplete="off" />
-                <button type="button" id="sendMessage" class="btn-send" onclick="sendMessage()">Send</button>
-            </div>
-        </div>
-
     </div>
 
-    <script>
-        var stompClient = null;
-        var currentRoomId = null;
-        var currentUserName = "";
-        var roomSubscription = null;
+    <!-- ── CHAT SCREEN ── -->
+    <div id="chatScreen">
+        <div class="chat-navbar">
+            <div class="room-chip">
+                <span class="room-chip-text" id="roomDisplay">------</span>
+                <button type="button" class="copy-btn" id="copyBtn" onclick="copyRoomId()" title="Copy room ID">
+                    <svg id="copyIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+            </div>
+            <button type="button" class="leave-btn" onclick="leaveChat()">Leave</button>
+        </div>
 
-        var nameInput = document.getElementById("nameInput");
-        var roomIdInput = document.getElementById("roomIdInput");
-        var joinError = document.getElementById("joinError");
-        var lobbyScreen = document.getElementById("lobbyScreen");
-        var chatScreen = document.getElementById("chatScreen");
-        var roomDisplay = document.getElementById("roomDisplay");
-        var chatMessages = document.getElementById("chatMessages");
-        var messageInput = document.getElementById("messageInput");
+        <div id="chatMessages"></div>
 
-        // Hide error as soon as user edits the room ID
-        roomIdInput.addEventListener("input", function () {
-            joinError.style.display = "none";
-        });
+        <div class="chat-input-bar">
+            <input type="text" id="messageInput" class="chat-input" autocomplete="off" />
+            <button type="button" id="sendMessage" class="btn-send" onclick="sendMessage()" title="Send">&#9992;</button>
+        </div>
+    </div>
 
-        // Format HH:MM timestamp
-        function formatTime(ts) {
-            var d = ts ? new Date(ts) : new Date();
-            return isNaN(d.getTime())
-                ? ""
-                : d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+</div>
+
+<script>
+    var stompClient = null;
+    var currentRoomId = null;
+    var currentUserName = "";
+    var roomSubscription = null;
+
+    var nameInput = document.getElementById("nameInput");
+    var roomIdInput = document.getElementById("roomIdInput");
+    var joinSlider = document.getElementById("joinSlider");
+    var joinError = document.getElementById("joinError");
+    var lobbyScreen = document.getElementById("lobbyScreen");
+    var chatScreen = document.getElementById("chatScreen");
+    var roomDisplay = document.getElementById("roomDisplay");
+    var chatMessages = document.getElementById("chatMessages");
+    var messageInput = document.getElementById("messageInput");
+
+    // Clear error message when user alters the input
+    roomIdInput.addEventListener("input", function() {
+        joinError.style.display = "none";
+        roomIdInput.classList.remove("input-error");
+    });
+
+    nameInput.addEventListener("input", function() {
+        nameInput.classList.remove("input-error");
+    });
+
+    // Validates name and triggers error animation if missing
+    function requireName() {
+        var name = nameInput.value.trim();
+        if (!name) {
+            nameInput.classList.add("input-error");
+            nameInput.focus();
+            return null;
         }
+        currentUserName = name;
+        return name;
+    }
 
-        // CREATE: generates random 6-char room ID, saves to MongoDB, enters chat automatically
-        function handleCreate() {
-            currentUserName = nameInput.value.trim();
-            fetch('/api/room/create')
-                .then(function (res) {
-                    if (!res.ok) throw new Error();
-                    return res.json();
-                })
-                .then(function (data) {
-                    enterChat(data.roomId);
-                })
-                .catch(function (err) {
-                    console.error(err);
-                });
-        }
+    // CREATE: validates name, calls POST /api/room/create, and enters chat immediately
+    function handleCreateRoom() {
+        var name = requireName();
+        if (!name) return;
 
-        // JOIN: checks if room ID exists in MongoDB; if yes enters, if no shows small red error text
-        function handleJoin() {
-            currentUserName = nameInput.value.trim();
-            var code = roomIdInput.value.trim().toUpperCase();
-            if (!code) {
-                joinError.style.display = "block";
-                return;
-            }
-
-            fetch('/api/room/check/' + encodeURIComponent(code))
-                .then(function (res) {
-                    if (res.ok) {
-                        return res.json();
-                    }
-                    throw new Error();
-                })
-                .then(function (data) {
-                    if (data.exists) {
-                        joinError.style.display = "none";
-                        enterChat(code);
-                    } else {
-                        joinError.style.display = "block";
-                    }
-                })
-                .catch(function () {
-                    joinError.style.display = "block";
-                });
-        }
-
-        // Transition into room chat view
-        function enterChat(roomId) {
-            currentRoomId = roomId.toUpperCase();
-            roomDisplay.textContent = currentRoomId;
-            chatMessages.innerHTML = "";
-
-            lobbyScreen.style.display = "none";
-            chatScreen.style.display = "flex";
-
-            connectWebSocket(currentRoomId);
-            loadHistory(currentRoomId);
-        }
-
-        // Connects STOMP client and isolates subscriptions per room
-        function connectWebSocket(roomId) {
-            var socket = new SockJS('/chat');
-            stompClient = Stomp.over(socket);
-            stompClient.debug = null;
-
-            stompClient.connect({}, function () {
-                // Subscribe strictly to messages for this room
-                roomSubscription = stompClient.subscribe('/topic/' + roomId, function (frame) {
-                    var message = JSON.parse(frame.body);
-                    appendMessage(message);
-                });
+        fetch('/api/room/create', { method: 'POST' })
+            .then(function(res) {
+                if (!res.ok) throw new Error("Creation failed");
+                return res.json();
+            })
+            .then(function(data) {
+                enterChat(data.roomId);
+            })
+            .catch(function(err) {
+                console.error("Room creation failed:", err);
             });
-        }
+    }
 
-        // Fetch previous 50 messages from MongoDB for this room
-        function loadHistory(roomId) {
-            fetch('/api/messages/' + encodeURIComponent(roomId))
-                .then(function (res) {
-                    return res.json();
-                })
-                .then(function (messages) {
-                    if (Array.isArray(messages)) {
-                        messages.forEach(function (msg) {
-                            appendMessage(msg);
-                        });
-                    }
-                })
-                .catch(function (err) {
-                    console.error(err);
-                });
-        }
-
-        // Render individual message bubble
-        function appendMessage(msg) {
-            var isMe = currentUserName !== "" && msg.sender === currentUserName;
-            var row = document.createElement("div");
-            row.className = "msg-row " + (isMe ? "msg-me" : "msg-other");
-
-            var bubble = document.createElement("div");
-            bubble.className = "bubble";
-
-            if (!isMe && msg.sender) {
-                var sender = document.createElement("span");
-                sender.className = "bubble-sender";
-                sender.textContent = msg.sender;
-                bubble.appendChild(sender);
+    // Toggles the room ID input slider
+    function toggleJoinSlider() {
+        if (!joinSlider.classList.contains("open")) {
+            joinSlider.classList.add("open");
+            roomIdInput.focus();
+        } else {
+            // If already open, trigger join if code is typed
+            if (roomIdInput.value.trim()) {
+                handleConfirmJoin();
             }
+        }
+    }
 
-            var text = document.createElement("span");
-            text.textContent = msg.content;
-            bubble.appendChild(text);
+    // JOIN: checks GET /api/room/{roomId}/exists; enters on success or displays red error
+    function handleConfirmJoin() {
+        var name = requireName();
+        if (!name) return;
 
-            var time = document.createElement("span");
-            time.className = "bubble-time";
-            time.textContent = formatTime(msg.timestamp);
-            bubble.appendChild(time);
-
-            row.appendChild(bubble);
-            chatMessages.appendChild(row);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        var code = roomIdInput.value.trim().toUpperCase();
+        if (!code) {
+            joinError.textContent = "Room not found";
+            joinError.style.display = "block";
+            roomIdInput.classList.add("input-error");
+            roomIdInput.focus();
+            return;
         }
 
-        // Sends message isolated to /app/chat/{roomId}
-        function sendMessage() {
-            var text = messageInput.value.trim();
-            if (!text || !stompClient || !stompClient.connected) return;
-
-            var payload = {
-                sender: currentUserName || "Anonymous",
-                content: text,
-                roomId: currentRoomId
-            };
-
-            stompClient.send('/app/chat/' + currentRoomId, {}, JSON.stringify(payload));
-            messageInput.value = "";
-            messageInput.focus();
-        }
-
-        // Copies room ID to clipboard
-        function copyRoomId() {
-            if (!currentRoomId) return;
-            navigator.clipboard.writeText(currentRoomId);
-        }
-
-        // Disconnects and navigates back to lobby
-        function leaveChat() {
-            if (roomSubscription) {
-                roomSubscription.unsubscribe();
-                roomSubscription = null;
-            }
-            if (stompClient && stompClient.connected) {
-                stompClient.disconnect();
-                stompClient = null;
-            }
-
-            currentRoomId = null;
-            chatMessages.innerHTML = "";
-            roomIdInput.value = "";
-            joinError.style.display = "none";
-
-            chatScreen.style.display = "none";
-            lobbyScreen.style.display = "flex";
-        }
-
-        // Keydown handlers for Enter key
-        messageInput.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") sendMessage();
-        });
-
-        roomIdInput.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") handleJoin();
-        });
-
-        nameInput.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") {
-                if (roomIdInput.value.trim()) {
-                    handleJoin();
+        fetch('/api/room/' + encodeURIComponent(code) + '/exists')
+            .then(function(res) {
+                if (res.ok) return res.json();
+                throw new Error("Not found");
+            })
+            .then(function(data) {
+                if (data.exists) {
+                    joinError.style.display = "none";
+                    enterChat(code);
                 } else {
-                    handleCreate();
+                    showJoinError();
                 }
-            }
+            })
+            .catch(function() {
+                showJoinError();
+            });
+    }
+
+    function showJoinError() {
+        joinError.textContent = "Room not found";
+        joinError.style.display = "block";
+        roomIdInput.classList.add("input-error");
+    }
+
+    // Transitions from lobby into chat interface
+    function enterChat(roomId) {
+        currentRoomId = roomId.toUpperCase();
+        roomDisplay.textContent = currentRoomId;
+        chatMessages.innerHTML = "";
+
+        // Fade transition from lobby to chat
+        lobbyScreen.style.display = "none";
+        chatScreen.classList.add("visible");
+
+        connectWebSocket(currentRoomId);
+        loadHistory(currentRoomId);
+    }
+
+    // Connects STOMP over SockJS and isolates subscription to this room
+    function connectWebSocket(roomId) {
+        var socket = new SockJS('/chat');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function() {
+            // Isolates messaging to /topic/{roomId}
+            roomSubscription = stompClient.subscribe('/topic/' + roomId, function(frame) {
+                var message = JSON.parse(frame.body);
+                appendMessage(message);
+            });
         });
-    </script>
+    }
+
+    // Fetches past 50 messages for this room from MongoDB
+    function loadHistory(roomId) {
+        fetch('/api/messages/' + encodeURIComponent(roomId))
+            .then(function(res) {
+                return res.json();
+            })
+            .then(function(messages) {
+                if (Array.isArray(messages)) {
+                    messages.forEach(function(msg) {
+                        appendMessage(msg);
+                    });
+                }
+            })
+            .catch(function(err) {
+                console.warn("Could not load history:", err);
+            });
+    }
+
+    function formatTime(ts) {
+        var d = ts ? new Date(ts) : new Date();
+        return isNaN(d.getTime())
+            ? ""
+            : d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+    }
+
+    // Renders message bubble in the stream
+    function appendMessage(msg) {
+        var isMe = currentUserName !== "" && msg.sender === currentUserName;
+        var row = document.createElement("div");
+        row.className = "msg-row " + (isMe ? "msg-me" : "msg-other");
+
+        var bubble = document.createElement("div");
+        bubble.className = "bubble";
+
+        // Show sender name above others' messages
+        if (!isMe && msg.sender) {
+            var senderEl = document.createElement("span");
+            senderEl.className = "bubble-sender";
+            senderEl.textContent = msg.sender;
+            bubble.appendChild(senderEl);
+        }
+
+        var textEl = document.createElement("span");
+        textEl.className = "bubble-text";
+        textEl.textContent = msg.content;
+        bubble.appendChild(textEl);
+
+        var timeEl = document.createElement("span");
+        timeEl.className = "bubble-time";
+        timeEl.textContent = formatTime(msg.timestamp);
+        bubble.appendChild(timeEl);
+
+        row.appendChild(bubble);
+        chatMessages.appendChild(row);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Sends message payload to /app/chat/{roomId}
+    function sendMessage() {
+        var text = messageInput.value.trim();
+        if (!text || !stompClient || !stompClient.connected) return;
+
+        var payload = {
+            sender: currentUserName || "Anonymous",
+            content: text,
+            roomId: currentRoomId
+        };
+
+        stompClient.send('/app/chat/' + currentRoomId, {}, JSON.stringify(payload));
+        messageInput.value = "";
+        messageInput.focus();
+    }
+
+    // Copies room ID to clipboard and temporarily updates copy icon
+    function copyRoomId() {
+        if (!currentRoomId) return;
+        navigator.clipboard.writeText(currentRoomId).then(function() {
+            var copyBtn = document.getElementById("copyBtn");
+            copyBtn.innerHTML = "&#10003;"; // Checkmark
+            setTimeout(function() {
+                copyBtn.innerHTML = `
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                `;
+            }, 1200);
+        });
+    }
+
+    // Leaves chat and restores lobby state
+    function leaveChat() {
+        if (roomSubscription) {
+            roomSubscription.unsubscribe();
+            roomSubscription = null;
+        }
+        if (stompClient && stompClient.connected) {
+            stompClient.disconnect();
+            stompClient = null;
+        }
+
+        currentRoomId = null;
+        chatMessages.innerHTML = "";
+        roomIdInput.value = "";
+        joinError.style.display = "none";
+        roomIdInput.classList.remove("input-error");
+        joinSlider.classList.remove("open");
+
+        chatScreen.classList.remove("visible");
+        lobbyScreen.style.display = "flex";
+    }
+
+    // Keyboard navigation
+    messageInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") sendMessage();
+    });
+
+    roomIdInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") handleConfirmJoin();
+    });
+
+    nameInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            if (joinSlider.classList.contains("open")) {
+                roomIdInput.focus();
+            } else {
+                handleCreateRoom();
+            }
+        }
+    });
+</script>
 
 </body>
-
 </html>

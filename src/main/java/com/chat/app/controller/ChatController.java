@@ -13,9 +13,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,7 +38,7 @@ public class ChatController {
     @MessageMapping("/chat/{roomId}")
     @SendTo("/topic/{roomId}")
     public ChatMessage sendMessage(@DestinationVariable String roomId, @Payload ChatMessage message) {
-        // Tag message with room ID in uppercase
+        // Enforce room code on message in uppercase
         message.setRoomId(roomId.toUpperCase());
 
         if (message.getType() == null) {
@@ -69,8 +67,9 @@ public class ChatController {
     // ── REST: Create Room ─────────────────────────────────────────────────────
     /**
      * Generates a random 6-character uppercase room ID, saves it to MongoDB, and returns it.
+     * Supports both POST (preferred) and GET.
      */
-    @GetMapping("/api/room/create")
+    @RequestMapping(value = "/api/room/create", method = {RequestMethod.POST, RequestMethod.GET})
     @ResponseBody
     public Map<String, String> createRoom() {
         String generatedRoomId = chatRoomService.generateAndSaveRoom();
@@ -81,10 +80,11 @@ public class ChatController {
     // ── REST: Check Room Existence ────────────────────────────────────────────
     /**
      * Checks if a room exists in MongoDB before allowing a user to join.
+     * Accessible via GET /api/room/{roomId}/exists and GET /api/room/check/{roomId}.
      */
-    @GetMapping("/api/room/check/{roomId}")
+    @GetMapping({"/api/room/{roomId}/exists", "/api/room/check/{roomId}"})
     @ResponseBody
-    public ResponseEntity<Map<String, Boolean>> checkRoom(@PathVariable String roomId) {
+    public ResponseEntity<Map<String, Boolean>> checkRoomExists(@PathVariable String roomId) {
         boolean exists = chatRoomService.roomExists(roomId);
         if (exists) {
             return ResponseEntity.ok(Map.of("exists", true));
