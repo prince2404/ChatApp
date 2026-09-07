@@ -4,14 +4,12 @@ import com.chat.app.model.ChatRoom;
 import com.chat.app.repository.ChatRoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -20,63 +18,75 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
 
+    // Alphanumeric characters excluding visually ambiguous ones (0/O, 1/I)
+    private static final String ROOM_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     /**
-     * Seed default rooms asynchronously after the application has fully started
-     * and bound to its HTTP port. This prevents slow database connections from
-     * blocking the web server startup and causing cloud deployment port scan timeouts.
+     * Generates a random 6-character uppercase room ID, saves it to MongoDB, and returns it.
      */
-    @EventListener(ApplicationReadyEvent.class)
-    public void initDefaultRooms() {
-        CompletableFuture.runAsync(() -> {
-            try {
-                seedRoomIfAbsent("general", "General Chat", "General conversation for everyone", "system");
-                seedRoomIfAbsent("tech-talk", "Tech Talk", "Discuss Java, Spring Boot, MongoDB & architecture", "system");
-                seedRoomIfAbsent("random", "Random", "Casual banter, off-topic chat & fun", "system");
-            } catch (Exception e) {
-                log.warn("Could not seed default rooms on startup: {}", e.getMessage());
-            }
-        });
+    public String generateAndSaveRoom() {
+        String roomId;
+        do {
+            roomId = generateRandomCode(6);
+        } while (chatRoomRepository.existsByRoomId(roomId));
+
+        ChatRoom room = ChatRoom.builder()
+                .roomId(roomId)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        chatRoomRepository.save(room);
+        log.info("Saved new room to MongoDB: {}", roomId);
+        return roomId;
     }
 
-    private void seedRoomIfAbsent(String roomId, String name, String description, String createdBy) {
-        if (!chatRoomRepository.existsByRoomId(roomId)) {
-            ChatRoom room = ChatRoom.builder()
-                    .roomId(roomId)
-                    .name(name)
-                    .description(description)
-                    .createdBy(createdBy)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            chatRoomRepository.save(room);
-            log.info("Initialized default chat room: #{}", roomId);
+    /**
+     * Checks if a room exists in MongoDB.
+     */
+    public boolean roomExists(String roomId) {
+        if (roomId == null || roomId.trim().isEmpty()) {
+            return false;
         }
+        return chatRoomRepository.existsByRoomId(roomId.trim().toUpperCase());
+    }
+
+    public Optional<ChatRoom> getRoomByRoomId(String roomId) {
+        if (roomId == null || roomId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        return chatRoomRepository.findByRoomId(roomId.trim());
     }
 
     public List<ChatRoom> getAllRooms() {
         return chatRoomRepository.findAllByOrderByCreatedAtAsc();
     }
 
-    public Optional<ChatRoom> getRoomByRoomId(String roomId) {
-        return chatRoomRepository.findByRoomId(roomId);
-    }
+    public ChatRoom createRoom(String roomId, String name, String description, String createdBy) {
+        String targetRoomId = (roomId != null && !roomId.trim().isEmpty())
+                ? roomId.trim()
+                : generateRandomCode(6);
 
-    public ChatRoom createRoom(String rawRoomId, String name, String description, String createdBy) {
-        String normalizedRoomId = rawRoomId.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "-");
-        if (normalizedRoomId.isEmpty()) {
-            throw new IllegalArgumentException("Room ID cannot be empty");
-        }
-        if (chatRoomRepository.existsByRoomId(normalizedRoomId)) {
-            throw new IllegalArgumentException("Room with ID #" + normalizedRoomId + " already exists");
+        if (chatRoomRepository.existsByRoomId(targetRoomId)) {
+            throw new IllegalArgumentException("Room ID already exists: " + targetRoomId);
         }
 
         ChatRoom room = ChatRoom.builder()
-                .roomId(normalizedRoomId)
-                .name((name == null || name.trim().isEmpty()) ? normalizedRoomId : name.trim())
+                .roomId(targetRoomId)
+                .name(name)
                 .description(description)
                 .createdBy(createdBy)
                 .createdAt(LocalDateTime.now())
                 .build();
 
         return chatRoomRepository.save(room);
+    }
+
+    private String generateRandomCode(int length) {
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(ROOM_CHARS.charAt(RANDOM.nextInt(ROOM_CHARS.length())));
+        }
+        return sb.toString();
     }
 }

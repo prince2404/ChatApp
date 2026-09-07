@@ -2,11 +2,14 @@ package com.chat.app.controller;
 
 import com.chat.app.model.ChatMessage;
 import com.chat.app.service.ChatMessageService;
+import com.chat.app.service.ChatRoomService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Map;
@@ -20,19 +23,43 @@ class ChatControllerTest {
     @Mock
     private ChatMessageService chatMessageService;
 
+    @Mock
+    private ChatRoomService chatRoomService;
+
     @InjectMocks
     private ChatController chatController;
 
     @Test
-    void testCreateRoomReturnsSixCharUppercaseId() {
+    void testCreateRoomCallsServiceAndReturnsId() {
+        when(chatRoomService.generateAndSaveRoom()).thenReturn("XK92PL");
+
         Map<String, String> response = chatController.createRoom();
 
         assertNotNull(response);
-        assertTrue(response.containsKey("roomId"));
+        assertEquals("XK92PL", response.get("roomId"));
+        verify(chatRoomService, times(1)).generateAndSaveRoom();
+    }
 
-        String roomId = response.get("roomId");
-        assertEquals(6, roomId.length());
-        assertTrue(roomId.matches("^[A-Z0-9]{6}$"));
+    @Test
+    void testCheckRoomExists() {
+        when(chatRoomService.roomExists("XK92PL")).thenReturn(true);
+
+        ResponseEntity<Map<String, Boolean>> response = chatController.checkRoom("XK92PL");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().get("exists"));
+    }
+
+    @Test
+    void testCheckRoomDoesNotExist() {
+        when(chatRoomService.roomExists("NOPE99")).thenReturn(false);
+
+        ResponseEntity<Map<String, Boolean>> response = chatController.checkRoom("NOPE99");
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().get("exists"));
     }
 
     @Test

@@ -19,14 +19,12 @@ public class ChatRoom {
     @Id
     private String id;
 
+    // 6-character uppercase room identifier (e.g. "XK92PL")
     @Indexed(unique = true)
     private String roomId;
 
     private String name;
-
     private String description;
-
     private String createdBy;
-
     private LocalDateTime createdAt;
 }
