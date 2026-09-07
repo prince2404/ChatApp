@@ -23,6 +23,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Spring Security configuration:
+ * - Stateless session policy
+ * - CSRF disabled for REST and WebSocket messaging
+ * - Allows public access to the lobby screen, room creation, message history, and WebSocket endpoints
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -52,19 +58,19 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // Disable CSRF for WebSocket STOMP and REST APIs
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // Stateless REST/WebSocket session management
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public web pages and static resources
+                        // Allow public web pages and static resources
                         .requestMatchers("/", "/chat", "/error", "/favicon.ico", "/css/**", "/js/**", "/images/**").permitAll()
-                        // Public authentication endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
-                        // WebSocket/SockJS handshake endpoint (auth enforced in STOMP interceptor)
+                        // Allow room creation, message history, and auth APIs
+                        .requestMatchers("/api/room/**", "/api/messages/**", "/api/rooms/**", "/api/auth/**").permitAll()
+                        // Allow WebSocket & SockJS fallback handshake
                         .requestMatchers("/chat/**").permitAll()
-                        // Secured API endpoints
-                        .requestMatchers("/api/rooms/**", "/api/messages/**").authenticated()
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

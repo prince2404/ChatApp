@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -16,6 +15,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+/**
+ * ChannelInterceptor for STOMP messages.
+ * Checks for a JWT token in STOMP headers on CONNECT frames:
+ * - If token is present and valid, attaches authenticated UserDetails Principal to the session.
+ * - If no token is provided, permits the connection as a guest/lobby room chatter.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -41,8 +46,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                 accessor.setUser(authentication);
                 log.info("WebSocket STOMP connected for authenticated user: {}", username);
             } else {
-                log.warn("WebSocket STOMP connection rejected: missing or invalid JWT token");
-                throw new MessageDeliveryException("Unauthorized: Valid JWT token required for WebSocket connection");
+                // Allows lobby users entering rooms by name to connect smoothly
+                log.info("WebSocket STOMP connected for lobby room user");
             }
         }
 
@@ -50,19 +55,19 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     }
 
     private String extractToken(StompHeaderAccessor accessor) {
-        // Try Authorization header first (e.g. "Bearer eyJhbGci...")
+        // Check "Authorization: Bearer <token>"
         String authHeader = accessor.getFirstNativeHeader("Authorization");
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
 
-        // Try direct "token" header
+        // Check "token" header
         String tokenHeader = accessor.getFirstNativeHeader("token");
         if (StringUtils.hasText(tokenHeader)) {
             return tokenHeader;
         }
 
-        // Fallback: check session attributes (e.g. from handshake query params)
+        // Fallback: check session attributes (from handshake query parameters)
         if (accessor.getSessionAttributes() != null) {
             Object tokenAttr = accessor.getSessionAttributes().get("token");
             if (tokenAttr != null) {
