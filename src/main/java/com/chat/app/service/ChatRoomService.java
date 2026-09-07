@@ -2,14 +2,16 @@ package com.chat.app.service;
 
 import com.chat.app.model.ChatRoom;
 import com.chat.app.repository.ChatRoomRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -18,15 +20,22 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
 
-    @PostConstruct
+    /**
+     * Seed default rooms asynchronously after the application has fully started
+     * and bound to its HTTP port. This prevents slow database connections from
+     * blocking the web server startup and causing cloud deployment port scan timeouts.
+     */
+    @EventListener(ApplicationReadyEvent.class)
     public void initDefaultRooms() {
-        try {
-            seedRoomIfAbsent("general", "General Chat", "General conversation for everyone", "system");
-            seedRoomIfAbsent("tech-talk", "Tech Talk", "Discuss Java, Spring Boot, MongoDB & architecture", "system");
-            seedRoomIfAbsent("random", "Random", "Casual banter, off-topic chat & fun", "system");
-        } catch (Exception e) {
-            log.warn("Could not seed default rooms (MongoDB may be connecting or read-only): {}", e.getMessage());
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                seedRoomIfAbsent("general", "General Chat", "General conversation for everyone", "system");
+                seedRoomIfAbsent("tech-talk", "Tech Talk", "Discuss Java, Spring Boot, MongoDB & architecture", "system");
+                seedRoomIfAbsent("random", "Random", "Casual banter, off-topic chat & fun", "system");
+            } catch (Exception e) {
+                log.warn("Could not seed default rooms on startup: {}", e.getMessage());
+            }
+        });
     }
 
     private void seedRoomIfAbsent(String roomId, String name, String description, String createdBy) {
