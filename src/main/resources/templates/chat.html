@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,23 +10,29 @@
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
     <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         :root {
-            --bg:             #0d1117;
-            --card-bg:        #161b22;
-            --nav-bg:         #1c2128;
-            --input-bg:       #21262d;
-            --bubble-me:      #5865f2;
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --nav-bg: #1c2128;
+            --input-bg: #21262d;
+            --bubble-me: #5865f2;
             --bubble-me-dark: #4752c4;
-            --bubble-other:   #2d333b;
-            --border:         rgba(255,255,255,0.08);
-            --text:           #e6edf3;
-            --text-muted:     #8b949e;
-            --placeholder:    #484f58;
-            --green:          #3fb950;
-            --red:            #f85149;
-            --accent:         #388bfd;
+            --bubble-other: #2d333b;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --placeholder: #484f58;
+            --green: #3fb950;
+            --red: #f85149;
+            --accent: #388bfd;
         }
 
         body {
@@ -46,7 +53,7 @@
             background: var(--card-bg);
             border-radius: 16px;
             border: 1px solid var(--border);
-            box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -136,7 +143,7 @@
         }
 
         .btn-join:hover {
-            background: rgba(255,255,255,0.08);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         /* ── CHAT SCREEN ── */
@@ -190,7 +197,7 @@
         }
 
         .leave-btn {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255, 255, 255, 0.06);
             border: 1px solid var(--border);
             color: var(--text-muted);
             padding: 6px 12px;
@@ -202,8 +209,8 @@
         }
 
         .leave-btn:hover {
-            background: rgba(248,81,73,0.15);
-            border-color: rgba(248,81,73,0.4);
+            background: rgba(248, 81, 73, 0.15);
+            border-color: rgba(248, 81, 73, 0.4);
             color: var(--red);
         }
 
@@ -216,9 +223,18 @@
             gap: 8px;
         }
 
-        #chatMessages::-webkit-scrollbar { width: 4px; }
-        #chatMessages::-webkit-scrollbar-track { background: transparent; }
-        #chatMessages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        #chatMessages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #chatMessages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #chatMessages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
 
         .msg-row {
             display: flex;
@@ -226,8 +242,15 @@
             max-width: 70%;
         }
 
-        .msg-me { align-self: flex-end; align-items: flex-end; }
-        .msg-other { align-self: flex-start; align-items: flex-start; }
+        .msg-me {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .msg-other {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
 
         .bubble {
             padding: 8px 14px;
@@ -308,260 +331,265 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="chat-card">
+    <div class="chat-card">
 
-    <!-- Lobby Screen -->
-    <div id="lobbyScreen">
-        <div class="lobby-box">
-            <input type="text" id="nameInput" class="lobby-input" autocomplete="name" />
-            <div class="join-wrapper">
-                <input type="text" id="roomIdInput" class="lobby-input" maxlength="6" autocomplete="off" />
-                <span id="joinError" class="error-msg">Room not found</span>
-            </div>
-            <div class="btn-group">
-                <button type="button" id="btnCreate" class="btn btn-create" onclick="handleCreate()">Create</button>
-                <button type="button" id="btnJoin" class="btn btn-join" onclick="handleJoin()">Join</button>
+        <!-- Lobby Screen -->
+        <div id="lobbyScreen">
+            <div class="lobby-box">
+                <input type="text" id="nameInput" placeholder="Enter your name" class="lobby-input"
+                    autocomplete="name" />
+                <div class="join-wrapper">
+                    <input type="text" id="roomIdInput" placeholder="Enter room ID" class="lobby-input" maxlength="6"
+                        autocomplete="off" />
+                    <span id="joinError" class="error-msg">Room not found</span>
+                </div>
+                <div class="btn-group">
+                    <button type="button" id="btnCreate" class="btn btn-create" onclick="handleCreate()">Create</button>
+                    <button type="button" id="btnJoin" class="btn btn-join" onclick="handleJoin()">Join</button>
+                </div>
             </div>
         </div>
+
+        <!-- Chat Screen -->
+        <div id="chatScreen">
+            <div class="chat-navbar">
+                <div class="room-tag">
+                    <span id="roomDisplay"></span>
+                    <button type="button" class="copy-btn" onclick="copyRoomId()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <button type="button" class="leave-btn" onclick="leaveChat()">Leave</button>
+            </div>
+
+            <div id="chatMessages"></div>
+
+            <div class="chat-input-bar">
+                <input type="text" id="messageInput" class="chat-input" autocomplete="off" />
+                <button type="button" id="sendMessage" class="btn-send" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Chat Screen -->
-    <div id="chatScreen">
-        <div class="chat-navbar">
-            <div class="room-tag">
-                <span id="roomDisplay"></span>
-                <button type="button" class="copy-btn" onclick="copyRoomId()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                </button>
-            </div>
-            <button type="button" class="leave-btn" onclick="leaveChat()">Leave</button>
-        </div>
+    <script>
+        var stompClient = null;
+        var currentRoomId = null;
+        var currentUserName = "";
+        var roomSubscription = null;
 
-        <div id="chatMessages"></div>
+        var nameInput = document.getElementById("nameInput");
+        var roomIdInput = document.getElementById("roomIdInput");
+        var joinError = document.getElementById("joinError");
+        var lobbyScreen = document.getElementById("lobbyScreen");
+        var chatScreen = document.getElementById("chatScreen");
+        var roomDisplay = document.getElementById("roomDisplay");
+        var chatMessages = document.getElementById("chatMessages");
+        var messageInput = document.getElementById("messageInput");
 
-        <div class="chat-input-bar">
-            <input type="text" id="messageInput" class="chat-input" autocomplete="off" />
-            <button type="button" id="sendMessage" class="btn-send" onclick="sendMessage()">Send</button>
-        </div>
-    </div>
-
-</div>
-
-<script>
-    var stompClient = null;
-    var currentRoomId = null;
-    var currentUserName = "";
-    var roomSubscription = null;
-
-    var nameInput = document.getElementById("nameInput");
-    var roomIdInput = document.getElementById("roomIdInput");
-    var joinError = document.getElementById("joinError");
-    var lobbyScreen = document.getElementById("lobbyScreen");
-    var chatScreen = document.getElementById("chatScreen");
-    var roomDisplay = document.getElementById("roomDisplay");
-    var chatMessages = document.getElementById("chatMessages");
-    var messageInput = document.getElementById("messageInput");
-
-    // Hide error as soon as user edits the room ID
-    roomIdInput.addEventListener("input", function() {
-        joinError.style.display = "none";
-    });
-
-    // Format HH:MM timestamp
-    function formatTime(ts) {
-        var d = ts ? new Date(ts) : new Date();
-        return isNaN(d.getTime())
-            ? ""
-            : d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
-    }
-
-    // CREATE: generates random 6-char room ID, saves to MongoDB, enters chat automatically
-    function handleCreate() {
-        currentUserName = nameInput.value.trim();
-        fetch('/api/room/create')
-            .then(function(res) {
-                if (!res.ok) throw new Error();
-                return res.json();
-            })
-            .then(function(data) {
-                enterChat(data.roomId);
-            })
-            .catch(function(err) {
-                console.error(err);
-            });
-    }
-
-    // JOIN: checks if room ID exists in MongoDB; if yes enters, if no shows small red error text
-    function handleJoin() {
-        currentUserName = nameInput.value.trim();
-        var code = roomIdInput.value.trim().toUpperCase();
-        if (!code) {
-            joinError.style.display = "block";
-            return;
-        }
-
-        fetch('/api/room/check/' + encodeURIComponent(code))
-            .then(function(res) {
-                if (res.ok) {
-                    return res.json();
-                }
-                throw new Error();
-            })
-            .then(function(data) {
-                if (data.exists) {
-                    joinError.style.display = "none";
-                    enterChat(code);
-                } else {
-                    joinError.style.display = "block";
-                }
-            })
-            .catch(function() {
-                joinError.style.display = "block";
-            });
-    }
-
-    // Transition into room chat view
-    function enterChat(roomId) {
-        currentRoomId = roomId.toUpperCase();
-        roomDisplay.textContent = currentRoomId;
-        chatMessages.innerHTML = "";
-
-        lobbyScreen.style.display = "none";
-        chatScreen.style.display = "flex";
-
-        connectWebSocket(currentRoomId);
-        loadHistory(currentRoomId);
-    }
-
-    // Connects STOMP client and isolates subscriptions per room
-    function connectWebSocket(roomId) {
-        var socket = new SockJS('/chat');
-        stompClient = Stomp.over(socket);
-        stompClient.debug = null;
-
-        stompClient.connect({}, function() {
-            // Subscribe strictly to messages for this room
-            roomSubscription = stompClient.subscribe('/topic/' + roomId, function(frame) {
-                var message = JSON.parse(frame.body);
-                appendMessage(message);
-            });
+        // Hide error as soon as user edits the room ID
+        roomIdInput.addEventListener("input", function () {
+            joinError.style.display = "none";
         });
-    }
 
-    // Fetch previous 50 messages from MongoDB for this room
-    function loadHistory(roomId) {
-        fetch('/api/messages/' + encodeURIComponent(roomId))
-            .then(function(res) {
-                return res.json();
-            })
-            .then(function(messages) {
-                if (Array.isArray(messages)) {
-                    messages.forEach(function(msg) {
-                        appendMessage(msg);
-                    });
-                }
-            })
-            .catch(function(err) {
-                console.error(err);
-            });
-    }
-
-    // Render individual message bubble
-    function appendMessage(msg) {
-        var isMe = currentUserName !== "" && msg.sender === currentUserName;
-        var row = document.createElement("div");
-        row.className = "msg-row " + (isMe ? "msg-me" : "msg-other");
-
-        var bubble = document.createElement("div");
-        bubble.className = "bubble";
-
-        if (!isMe && msg.sender) {
-            var sender = document.createElement("span");
-            sender.className = "bubble-sender";
-            sender.textContent = msg.sender;
-            bubble.appendChild(sender);
+        // Format HH:MM timestamp
+        function formatTime(ts) {
+            var d = ts ? new Date(ts) : new Date();
+            return isNaN(d.getTime())
+                ? ""
+                : d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
         }
 
-        var text = document.createElement("span");
-        text.textContent = msg.content;
-        bubble.appendChild(text);
-
-        var time = document.createElement("span");
-        time.className = "bubble-time";
-        time.textContent = formatTime(msg.timestamp);
-        bubble.appendChild(time);
-
-        row.appendChild(bubble);
-        chatMessages.appendChild(row);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    // Sends message isolated to /app/chat/{roomId}
-    function sendMessage() {
-        var text = messageInput.value.trim();
-        if (!text || !stompClient || !stompClient.connected) return;
-
-        var payload = {
-            sender: currentUserName || "Anonymous",
-            content: text,
-            roomId: currentRoomId
-        };
-
-        stompClient.send('/app/chat/' + currentRoomId, {}, JSON.stringify(payload));
-        messageInput.value = "";
-        messageInput.focus();
-    }
-
-    // Copies room ID to clipboard
-    function copyRoomId() {
-        if (!currentRoomId) return;
-        navigator.clipboard.writeText(currentRoomId);
-    }
-
-    // Disconnects and navigates back to lobby
-    function leaveChat() {
-        if (roomSubscription) {
-            roomSubscription.unsubscribe();
-            roomSubscription = null;
-        }
-        if (stompClient && stompClient.connected) {
-            stompClient.disconnect();
-            stompClient = null;
+        // CREATE: generates random 6-char room ID, saves to MongoDB, enters chat automatically
+        function handleCreate() {
+            currentUserName = nameInput.value.trim();
+            fetch('/api/room/create')
+                .then(function (res) {
+                    if (!res.ok) throw new Error();
+                    return res.json();
+                })
+                .then(function (data) {
+                    enterChat(data.roomId);
+                })
+                .catch(function (err) {
+                    console.error(err);
+                });
         }
 
-        currentRoomId = null;
-        chatMessages.innerHTML = "";
-        roomIdInput.value = "";
-        joinError.style.display = "none";
-
-        chatScreen.style.display = "none";
-        lobbyScreen.style.display = "flex";
-    }
-
-    // Keydown handlers for Enter key
-    messageInput.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") sendMessage();
-    });
-
-    roomIdInput.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") handleJoin();
-    });
-
-    nameInput.addEventListener("keydown", function(e) {
-        if (e.key === "Enter") {
-            if (roomIdInput.value.trim()) {
-                handleJoin();
-            } else {
-                handleCreate();
+        // JOIN: checks if room ID exists in MongoDB; if yes enters, if no shows small red error text
+        function handleJoin() {
+            currentUserName = nameInput.value.trim();
+            var code = roomIdInput.value.trim().toUpperCase();
+            if (!code) {
+                joinError.style.display = "block";
+                return;
             }
+
+            fetch('/api/room/check/' + encodeURIComponent(code))
+                .then(function (res) {
+                    if (res.ok) {
+                        return res.json();
+                    }
+                    throw new Error();
+                })
+                .then(function (data) {
+                    if (data.exists) {
+                        joinError.style.display = "none";
+                        enterChat(code);
+                    } else {
+                        joinError.style.display = "block";
+                    }
+                })
+                .catch(function () {
+                    joinError.style.display = "block";
+                });
         }
-    });
-</script>
+
+        // Transition into room chat view
+        function enterChat(roomId) {
+            currentRoomId = roomId.toUpperCase();
+            roomDisplay.textContent = currentRoomId;
+            chatMessages.innerHTML = "";
+
+            lobbyScreen.style.display = "none";
+            chatScreen.style.display = "flex";
+
+            connectWebSocket(currentRoomId);
+            loadHistory(currentRoomId);
+        }
+
+        // Connects STOMP client and isolates subscriptions per room
+        function connectWebSocket(roomId) {
+            var socket = new SockJS('/chat');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+
+            stompClient.connect({}, function () {
+                // Subscribe strictly to messages for this room
+                roomSubscription = stompClient.subscribe('/topic/' + roomId, function (frame) {
+                    var message = JSON.parse(frame.body);
+                    appendMessage(message);
+                });
+            });
+        }
+
+        // Fetch previous 50 messages from MongoDB for this room
+        function loadHistory(roomId) {
+            fetch('/api/messages/' + encodeURIComponent(roomId))
+                .then(function (res) {
+                    return res.json();
+                })
+                .then(function (messages) {
+                    if (Array.isArray(messages)) {
+                        messages.forEach(function (msg) {
+                            appendMessage(msg);
+                        });
+                    }
+                })
+                .catch(function (err) {
+                    console.error(err);
+                });
+        }
+
+        // Render individual message bubble
+        function appendMessage(msg) {
+            var isMe = currentUserName !== "" && msg.sender === currentUserName;
+            var row = document.createElement("div");
+            row.className = "msg-row " + (isMe ? "msg-me" : "msg-other");
+
+            var bubble = document.createElement("div");
+            bubble.className = "bubble";
+
+            if (!isMe && msg.sender) {
+                var sender = document.createElement("span");
+                sender.className = "bubble-sender";
+                sender.textContent = msg.sender;
+                bubble.appendChild(sender);
+            }
+
+            var text = document.createElement("span");
+            text.textContent = msg.content;
+            bubble.appendChild(text);
+
+            var time = document.createElement("span");
+            time.className = "bubble-time";
+            time.textContent = formatTime(msg.timestamp);
+            bubble.appendChild(time);
+
+            row.appendChild(bubble);
+            chatMessages.appendChild(row);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Sends message isolated to /app/chat/{roomId}
+        function sendMessage() {
+            var text = messageInput.value.trim();
+            if (!text || !stompClient || !stompClient.connected) return;
+
+            var payload = {
+                sender: currentUserName || "Anonymous",
+                content: text,
+                roomId: currentRoomId
+            };
+
+            stompClient.send('/app/chat/' + currentRoomId, {}, JSON.stringify(payload));
+            messageInput.value = "";
+            messageInput.focus();
+        }
+
+        // Copies room ID to clipboard
+        function copyRoomId() {
+            if (!currentRoomId) return;
+            navigator.clipboard.writeText(currentRoomId);
+        }
+
+        // Disconnects and navigates back to lobby
+        function leaveChat() {
+            if (roomSubscription) {
+                roomSubscription.unsubscribe();
+                roomSubscription = null;
+            }
+            if (stompClient && stompClient.connected) {
+                stompClient.disconnect();
+                stompClient = null;
+            }
+
+            currentRoomId = null;
+            chatMessages.innerHTML = "";
+            roomIdInput.value = "";
+            joinError.style.display = "none";
+
+            chatScreen.style.display = "none";
+            lobbyScreen.style.display = "flex";
+        }
+
+        // Keydown handlers for Enter key
+        messageInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        roomIdInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") handleJoin();
+        });
+
+        nameInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                if (roomIdInput.value.trim()) {
+                    handleJoin();
+                } else {
+                    handleCreate();
+                }
+            }
+        });
+    </script>
 
 </body>
+
 </html>
