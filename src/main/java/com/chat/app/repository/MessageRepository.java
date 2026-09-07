@@ -8,14 +8,10 @@ import java.util.List;
 
 @Repository
 public interface MessageRepository extends MongoRepository<ChatMessage, String> {
-    // MongoRepository<ChatMessage, String>
-    // ↑ First type  = the document class
-    //   Second type = the ID type (String for MongoDB ObjectId)
-    // Spring Data auto-generates all CRUD methods — no SQL needed.
 
+    // Retrieve last 50 messages for a specific room ordered by timestamp ascending
+    List<ChatMessage> findTop50ByRoomIdOrderByTimestampAsc(String roomId);
+
+    // Backward-compatible query for global messages
     List<ChatMessage> findTop50ByOrderByTimestampAsc();
-    // ↑ Spring Data reads this method name and builds the query:
-    //   "find top 50 documents, ordered by timestamp ascending"
-    //   No query code needed — the method name IS the query.
-    //   Ascending = oldest first, so history loads in correct order.
 }

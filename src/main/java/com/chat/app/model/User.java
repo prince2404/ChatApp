@@ -5,31 +5,29 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "messages")
-@CompoundIndex(name = "room_time_idx", def = "{'roomId': 1, 'timestamp': 1}")
-public class ChatMessage {
+@Document(collection = "users")
+public class User {
     @Id
     private String id;
 
-    @Indexed
-    private String roomId;
+    @Indexed(unique = true)
+    private String username;
 
-    private String sender;
+    private String password;
 
-    private String content;
+    @Builder.Default
+    private Set<String> roles = new HashSet<>();
 
-    private MessageType type;
-
-    @Indexed
-    private LocalDateTime timestamp;
+    private LocalDateTime createdAt;
 }

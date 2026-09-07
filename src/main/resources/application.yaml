@@ -1,10 +1,18 @@
 spring:
   application:
     name: chat
+  mongodb:
+    uri: ${MONGODB_URI:mongodb+srv://developerprincekumar_db_user:DzLFPU7QVmGzsgIZ@chatapp.drw0spx.mongodb.net/chatapp?retryWrites=true&w=majority&appName=chatapp}
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb+srv://developerprincekumar_db_user:DzLFPU7QVmGzsgIZ@chatapp.drw0spx.mongodb.net/?appName=chatapp}
+      uri: ${MONGODB_URI:mongodb+srv://developerprincekumar_db_user:DzLFPU7QVmGzsgIZ@chatapp.drw0spx.mongodb.net/chatapp?retryWrites=true&w=majority&appName=chatapp}
+      database: chatapp
 
 server:
   port: ${PORT:8080}
   forward-headers-strategy: native
+
+jwt:
+  # 256-bit base64 secret key
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours

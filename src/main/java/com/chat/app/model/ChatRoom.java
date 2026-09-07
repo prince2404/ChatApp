@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,21 +14,19 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "messages")
-@CompoundIndex(name = "room_time_idx", def = "{'roomId': 1, 'timestamp': 1}")
-public class ChatMessage {
+@Document(collection = "rooms")
+public class ChatRoom {
     @Id
     private String id;
 
-    @Indexed
+    @Indexed(unique = true)
     private String roomId;
 
-    private String sender;
+    private String name;
 
-    private String content;
+    private String description;
 
-    private MessageType type;
+    private String createdBy;
 
-    @Indexed
-    private LocalDateTime timestamp;
+    private LocalDateTime createdAt;
 }

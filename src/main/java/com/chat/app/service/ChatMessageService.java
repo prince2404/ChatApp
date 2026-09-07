@@ -1,6 +1,7 @@
 package com.chat.app.service;
 
 import com.chat.app.model.ChatMessage;
+import com.chat.app.model.MessageType;
 import com.chat.app.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,27 +11,30 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-// ↑ Lombok: generates constructor with all final fields.
-//   Spring uses this constructor to inject MessageRepository.
 public class ChatMessageService {
 
     private final MessageRepository messageRepository;
 
-    // Save a message to MongoDB
+    // Save a message to MongoDB with server-assigned timestamp and normalized room
     public ChatMessage save(ChatMessage message) {
+        if (message.getRoomId() == null || message.getRoomId().trim().isEmpty()) {
+            message.setRoomId("general");
+        }
+        if (message.getType() == null) {
+            message.setType(MessageType.CHAT);
+        }
         message.setTimestamp(LocalDateTime.now());
-        // ↑ We set the timestamp here on the server side.
-        //   Never trust the client to send timestamps —
-        //   they can be wrong or manipulated.
         return messageRepository.save(message);
-        // ↑ save() inserts if new (no ID), updates if ID exists.
-        //   Returns the saved object with the auto-generated ID filled in.
     }
 
-    // Get last 50 messages for history
+    // Get last 50 messages for a specific room
+    public List<ChatMessage> getLast50MessagesByRoom(String roomId) {
+        String targetRoom = (roomId == null || roomId.trim().isEmpty()) ? "general" : roomId.trim();
+        return messageRepository.findTop50ByRoomIdOrderByTimestampAsc(targetRoom);
+    }
+
+    // Get last 50 global messages for backward compatibility
     public List<ChatMessage> getLast50Messages() {
         return messageRepository.findTop50ByOrderByTimestampAsc();
-        // ↑ Returns oldest-first so UI renders them top to bottom
-        //   in the correct chronological order.
     }
 }
